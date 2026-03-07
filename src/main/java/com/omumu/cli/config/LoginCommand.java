@@ -8,7 +8,6 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
 
-import java.awt.Desktop;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -113,9 +112,8 @@ public class LoginCommand implements Callable<Integer> {
                 + "&code_challenge_method=S256";
 
         System.out.println();
-        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+        if (openBrowser(authorizeUrl)) {
             System.out.println("Opening browser to authorize...");
-            Desktop.getDesktop().browse(URI.create(authorizeUrl));
         } else {
             System.out.println("Open this URL in your browser:");
             System.out.println(authorizeUrl);
@@ -269,6 +267,24 @@ public class LoginCommand implements Callable<Integer> {
         byte[] bytes = new byte[16];
         new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private static boolean openBrowser(String url) {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        try {
+            if (os.contains("mac")) {
+                new ProcessBuilder("open", url).start();
+            } else if (os.contains("linux")) {
+                new ProcessBuilder("xdg-open", url).start();
+            } else if (os.contains("win")) {
+                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+            } else {
+                return false;
+            }
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     private static String enc(String s) {
