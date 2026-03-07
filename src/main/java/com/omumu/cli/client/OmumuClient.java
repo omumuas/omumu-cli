@@ -34,13 +34,29 @@ public class OmumuClient {
     }
 
     public JsonNode healthCheck() throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/mcp/health"))
-                .header("Accept", "application/json")
-                .GET()
-                .build();
+        HttpRequest request;
+        try {
+            request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/mcp/health"))
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Invalid URL: " + baseUrl);
+        }
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (java.net.ConnectException e) {
+            throw new IOException("Could not connect to " + baseUrl + " (connection refused)");
+        } catch (java.net.http.HttpConnectTimeoutException e) {
+            throw new IOException("Connection timed out: " + baseUrl);
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
+            throw new IOException("Could not reach " + baseUrl + ": " + msg);
+        }
         if (response.statusCode() != 200) {
             throw new IOException("Health check failed: HTTP " + response.statusCode());
         }
@@ -84,7 +100,7 @@ public class OmumuClient {
         capabilities.putObject("tools");
         ObjectNode clientInfo = params.putObject("clientInfo");
         clientInfo.put("name", "omumu-cli");
-        clientInfo.put("version", "0.2.2");
+        clientInfo.put("version", "0.2.3");
 
         JsonNode response = sendJsonRpc("initialize", params);
         if (response.has("error")) {

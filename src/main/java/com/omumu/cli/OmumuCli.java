@@ -11,7 +11,7 @@ import picocli.CommandLine.Mixin;
 @Command(
     name = "omumu",
     description = "CLI for the Omumu customer education platform.",
-    version = "omumu 0.2.2",
+    version = "omumu 0.2.3",
     mixinStandardHelpOptions = true,
     subcommands = {
         LoginCommand.class,
