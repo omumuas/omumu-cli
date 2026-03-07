@@ -29,7 +29,7 @@ public class CourseGetCommand extends BaseCommand implements Callable<Integer> {
             Map<String, Object> args = new LinkedHashMap<>();
             args.put("courseId", courseId);
             JsonNode result = client.callTool("omumu_course_get", args);
-            out.printResult(result);
+            out.printResult(extractData(result));
             return 0;
         } catch (Exception e) {
             out.printError(e.getMessage());

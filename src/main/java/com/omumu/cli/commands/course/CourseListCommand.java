@@ -31,34 +31,26 @@ public class CourseListCommand extends BaseCommand implements Callable<Integer> 
             Map<String, Object> args = new LinkedHashMap<>();
             args.put("includeModules", includeModules);
             JsonNode result = client.callTool("omumu_course_list", args);
+            JsonNode data = extractData(result);
 
             if (courseCommand.getParent().isJson()) {
-                out.printResult(result);
+                out.printResult(data);
                 return 0;
             }
 
-            // Parse into table
-            JsonNode content = extractContent(result);
-            if (content == null || !content.isArray() || content.isEmpty()) {
+            if (!data.isArray() || data.isEmpty()) {
                 out.printMessage("No courses found.");
                 return 0;
             }
 
-            // For text content, try to extract structured data
-            if (content.get(0).has("text")) {
-                // MCP returns content as [{type: "text", text: "..."}]
-                out.printMessage(content.get(0).get("text").asText());
-                return 0;
-            }
-
-            // If we get structured array data, render as table
-            String[] headers = {"ID", "Title", "Status"};
+            String[] headers = {"ID", "Title", "Modules", "Lessons"};
             List<String[]> rows = new ArrayList<>();
-            for (JsonNode course : content) {
+            for (JsonNode course : data) {
                 rows.add(new String[]{
                     course.path("id").asText(""),
                     course.path("title").asText(""),
-                    course.path("status").asText("")
+                    course.path("stats").path("moduleCount").asText(""),
+                    course.path("stats").path("lessonCount").asText("")
                 });
             }
             out.printTable(headers, rows.toArray(new String[0][]));
@@ -68,13 +60,5 @@ public class CourseListCommand extends BaseCommand implements Callable<Integer> 
             out.printError(e.getMessage());
             return 1;
         }
-    }
-
-    private JsonNode extractContent(JsonNode result) {
-        // MCP tools/call returns {content: [{type: "text", text: "..."}]}
-        if (result.has("content")) {
-            return result.get("content");
-        }
-        return result;
     }
 }

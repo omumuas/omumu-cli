@@ -35,12 +35,13 @@ public class CourseCreateCommand extends BaseCommand implements Callable<Integer
                 args.put("tagline", tagline);
             }
             JsonNode result = client.callTool("omumu_course_create", args);
+            JsonNode data = extractData(result);
 
             if (courseCommand.getParent().isJson()) {
-                out.printResult(result);
+                out.printResult(data);
             } else {
-                out.printMessage("Course created successfully.");
-                out.printResult(result);
+                out.printMessage("Course created.");
+                out.printResult(data);
             }
             return 0;
         } catch (Exception e) {
