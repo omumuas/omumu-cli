@@ -84,7 +84,7 @@ public class OmumuClient {
         capabilities.putObject("tools");
         ObjectNode clientInfo = params.putObject("clientInfo");
         clientInfo.put("name", "omumu-cli");
-        clientInfo.put("version", "0.1.0");
+        clientInfo.put("version", "0.2.1");
 
         JsonNode response = sendJsonRpc("initialize", params);
         if (response.has("error")) {
