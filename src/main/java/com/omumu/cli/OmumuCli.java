@@ -5,7 +5,7 @@ import com.omumu.cli.commands.course.CourseCommand;
 import com.omumu.cli.config.LoginCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
+import picocli.CommandLine.Mixin;
 
 @Command(
     name = "omumu",
@@ -20,32 +20,23 @@ import picocli.CommandLine.Option;
 )
 public class OmumuCli implements Runnable {
 
-    @Option(names = "--json", description = "Output as JSON (for scripts and AI agents)")
-    boolean json;
-
-    @Option(names = "--verbose", description = "Verbose output")
-    boolean verbose;
-
-    @Option(names = "--site-url", description = "Override site URL", defaultValue = "${OMUMU_URL}")
-    String siteUrl;
-
-    @Option(names = "--api-key", description = "Override API key", defaultValue = "${OMUMU_API_KEY}")
-    String apiKey;
+    @Mixin
+    GlobalOptions globalOptions = new GlobalOptions();
 
     public boolean isJson() {
-        return json || "json".equalsIgnoreCase(System.getenv("OMUMU_OUTPUT"));
+        return globalOptions.json || "json".equalsIgnoreCase(System.getenv("OMUMU_OUTPUT"));
     }
 
     public boolean isVerbose() {
-        return verbose;
+        return globalOptions.verbose;
     }
 
     public String getSiteUrl() {
-        return siteUrl;
+        return globalOptions.siteUrl;
     }
 
     public String getApiKey() {
-        return apiKey;
+        return globalOptions.apiKey;
     }
 
     @Override
