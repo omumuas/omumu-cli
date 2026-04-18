@@ -4,6 +4,7 @@ import com.omumu.cli.commands.SchemaCommand;
 import com.omumu.cli.commands.StatusCommand;
 import com.omumu.cli.commands.course.CourseCommand;
 import com.omumu.cli.config.LoginCommand;
+import com.omumu.cli.config.SignupCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -14,6 +15,7 @@ import picocli.CommandLine.Mixin;
     version = "omumu 0.2.3",
     mixinStandardHelpOptions = true,
     subcommands = {
+        SignupCommand.class,
         LoginCommand.class,
         StatusCommand.class,
         SchemaCommand.class,
