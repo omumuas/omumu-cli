@@ -1,0 +1,55 @@
+name: Security Review
+
+permissions:
+  pull-requests: write
+  contents: read
+  issues: read
+  id-token: write  # Required by claude-code-action for OIDC token exchange
+
+on:
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Security Review
+        id: claude-security
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: '*'
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Perform a SECURITY-FOCUSED review of this pull request. Analyze the changes for:
+
+            ## Security Analysis
+            - **Injection vulnerabilities**: SQL injection, command injection, XSS, LDAP injection
+            - **Authentication/Authorization**: Missing auth checks, privilege escalation, insecure session handling
+            - **Data exposure**: Sensitive data in logs, hardcoded secrets, PII leakage
+            - **Input validation**: Missing or insufficient validation, type confusion
+            - **Cryptographic issues**: Weak algorithms, improper key management, insecure random
+            - **OWASP Top 10**: Check for common web application security risks
+            - **Dependency risks**: Known vulnerable dependencies if package files changed
+
+            ## Output Format
+            Rate severity as: 🔴 CRITICAL, 🟠 HIGH, 🟡 MEDIUM, 🟢 LOW, or ✅ NO ISSUES
+
+            For each finding include:
+            - File and line number
+            - Vulnerability type
+            - Severity rating
+            - Specific remediation steps
+
+            Use the repository's CLAUDE.md for context on the codebase.
+
+            Use `gh pr comment` with your Bash tool to leave your security review as a comment on the PR.
+
+          claude_args: '--model opus --allowedTools Bash,Write'
