@@ -4,13 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OmumuClient {
@@ -82,6 +87,74 @@ public class OmumuClient {
         return response.get("result");
     }
 
+    /**
+     * Uploads a {@code .skill} bundle to {@code /mcp/skill/upload} as multipart/form-data.
+     *
+     * <p>The MCP JSON-RPC tool {@code omumu_skill_upload} also exists, but requires the bundle to
+     * ride inside a tool-call argument as base64 — a path Claude Desktop and similar LLM clients
+     * cannot reliably emit for non-trivial payloads. The CLI is exactly the kind of client the
+     * multipart endpoint was built for: it can stream raw bytes without LLM transcription.
+     */
+    public JsonNode uploadSkillBundle(Path bundlePath, boolean publish) throws IOException, InterruptedException {
+        final byte[] zipBytes = Files.readAllBytes(bundlePath);
+        final String filename = bundlePath.getFileName() != null ? bundlePath.getFileName().toString() : "bundle.skill";
+        final String boundary = "----omumu-cli-" + UUID.randomUUID();
+
+        final ByteArrayOutputStream body = new ByteArrayOutputStream();
+        body.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Disposition: form-data; name=\"bundle\"; filename=\"" + filename + "\"\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+        body.write("Content-Type: application/zip\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+        body.write(zipBytes);
+        body.write(("\r\n--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write("Content-Disposition: form-data; name=\"publish\"\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+        body.write(Boolean.toString(publish).getBytes(StandardCharsets.UTF_8));
+        body.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/mcp/skill/upload"))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .header("Accept", "application/json")
+                .timeout(Duration.ofSeconds(120))
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()));
+
+        if (apiKey != null && !apiKey.isEmpty()) {
+            builder.header("Authorization", "Bearer " + apiKey);
+        }
+
+        HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 401) {
+            throw new IOException("Authentication failed. Check your API key with 'omumu login'.");
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            // Don't second-guess the meaning of 403 — Cloudflare challenges, WAF blocks, and
+            // application-level permission denials all use the same status code, and pretending
+            // we know which one is which has historically misled debugging. Surface what the
+            // server actually said: a JSON body's error_description if present, the cf-mitigated
+            // header for Cloudflare challenges, otherwise a truncated raw body.
+            String detail = response.body();
+            try {
+                JsonNode err = mapper.readTree(detail);
+                if (err.has("error_description")) {
+                    detail = err.get("error_description").asText();
+                } else if (err.has("error")) {
+                    detail = err.get("error").asText();
+                }
+            } catch (IOException ignore) {
+                String cfMitigated = response.headers().firstValue("cf-mitigated").orElse(null);
+                if (cfMitigated != null) {
+                    detail = "Cloudflare " + cfMitigated + " — request was blocked before reaching Omumu";
+                } else if (detail != null && detail.length() > 240) {
+                    detail = detail.substring(0, 240) + "…";
+                }
+            }
+            throw new IOException("Upload failed: HTTP " + response.statusCode() + " — " + detail);
+        }
+
+        return mapper.readTree(response.body());
+    }
+
     public JsonNode listTools() throws IOException, InterruptedException {
         ensureInitialized();
         JsonNode response = sendJsonRpc("tools/list", null);
@@ -100,7 +173,7 @@ public class OmumuClient {
         capabilities.putObject("tools");
         ObjectNode clientInfo = params.putObject("clientInfo");
         clientInfo.put("name", "omumu-cli");
-        clientInfo.put("version", "0.2.3");
+        clientInfo.put("version", "0.2.4");
 
         JsonNode response = sendJsonRpc("initialize", params);
         if (response.has("error")) {

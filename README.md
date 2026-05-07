@@ -95,7 +95,22 @@ Run `omumu schema` for the full list with parameters. Here's the overview:
 | `optinform` | list, get, create, update, delete, add-field, remove-field, link-sequence |
 | `page` | list, get, create, update, delete |
 | `media` | generate image, set image |
+| `skill` | upload |
 | `debug` | throwables, outcome-log, sql, templates |
+
+### Uploading skills
+
+A skill (workflow for AI assistants) is packaged as a `.skill` zip — a `SKILL.md`
+plus any supporting files. Upload it with:
+
+```bash
+omumu skill upload path/to/create-course.skill           # creates as DRAFT
+omumu skill upload path/to/create-course.skill --publish # publishes immediately
+```
+
+The CLI streams the bundle as `multipart/form-data` to `/mcp/skill/upload`, which
+sidesteps the LLM-emitted-base64 limit that prevents Claude Desktop from invoking
+`omumu_skill_upload` directly for non-trivial bundles. Requires platform admin.
 
 ## How it works
 
@@ -109,7 +124,7 @@ cd omumu-cli
 
 # JAR (requires Java 21+)
 mvn clean package
-java -jar target/omumu-cli-0.2.3.jar --help
+java -jar target/omumu-cli-0.2.4.jar --help
 
 # Native binary (requires GraalVM)
 mvn clean package -Pnative

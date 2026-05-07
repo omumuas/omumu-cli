@@ -29,6 +29,25 @@ import com.sun.net.httpserver.HttpServer;
 @Command(name = "login", mixinStandardHelpOptions = true, description = "Log in to your Omumu site (opens browser)")
 public class LoginCommand implements Callable<Integer> {
 
+    /**
+     * OAuth scopes requested during browser login. Must match the names defined in
+     * {@code MCPPermission.ALL_SCOPE_NAMES} on the server — anything else is rejected
+     * with {@code invalid_scope}. The set covers everything the CLI's commands need;
+     * the consent screen lets the user narrow it.
+     */
+    private static final String REQUESTED_SCOPES = String.join(" ",
+            "course:read", "course:write",
+            "offer:read", "offer:write",
+            "email:read", "email:write",
+            "quiz:read", "quiz:write",
+            "optinform:read", "optinform:write",
+            "page:read", "page:write",
+            "automation:read", "automation:write",
+            "resource:read", "resource:write",
+            "media:generate",
+            "skill:read", "skill:write",
+            "debug");
+
     @ParentCommand
     OmumuCli parent;
 
@@ -106,7 +125,7 @@ public class LoginCommand implements Callable<Integer> {
                 + "?client_id=" + enc(clientId)
                 + "&redirect_uri=" + enc(redirectUri)
                 + "&response_type=code"
-                + "&scope=" + enc("mcp:read mcp:write")
+                + "&scope=" + enc(REQUESTED_SCOPES)
                 + "&state=" + enc(state)
                 + "&code_challenge=" + enc(codeChallenge)
                 + "&code_challenge_method=S256";

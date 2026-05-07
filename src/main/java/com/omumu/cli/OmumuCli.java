@@ -3,6 +3,7 @@ package com.omumu.cli;
 import com.omumu.cli.commands.SchemaCommand;
 import com.omumu.cli.commands.StatusCommand;
 import com.omumu.cli.commands.course.CourseCommand;
+import com.omumu.cli.commands.skill.SkillCommand;
 import com.omumu.cli.config.LoginCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -11,13 +12,14 @@ import picocli.CommandLine.Mixin;
 @Command(
     name = "omumu",
     description = "CLI for the Omumu customer education platform.",
-    version = "omumu 0.2.3",
+    version = "omumu 0.2.4",
     mixinStandardHelpOptions = true,
     subcommands = {
         LoginCommand.class,
         StatusCommand.class,
         SchemaCommand.class,
-        CourseCommand.class
+        CourseCommand.class,
+        SkillCommand.class
     }
 )
 public class OmumuCli implements Runnable {
