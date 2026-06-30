@@ -92,10 +92,19 @@ public class SignupCommand implements Callable<Integer> {
         String siteUrl = pollUntilProvisioned(accessToken, checkout.sessionId);
         if (siteUrl == null) return 1;
 
-        saveProfile(siteUrl, accessToken);
-
         System.out.println();
         System.out.println("Your site is live: " + siteUrl);
+        System.out.println();
+
+        // The signup token carries only site:provision against the platform host — it cannot manage
+        // the new site. Log in against the new site itself to save a working, correctly-scoped profile.
+        if (loginToNewSite(siteUrl) != 0) {
+            System.out.println();
+            System.out.println("Couldn't connect the CLI to your new site automatically. Finish with:");
+            System.out.println("  omumu login --url " + siteUrl);
+            return 1;
+        }
+
         System.out.println("Try it: omumu status");
         return 0;
     }
@@ -307,17 +316,24 @@ public class SignupCommand implements Callable<Integer> {
         return null;
     }
 
-    private void saveProfile(String siteUrl, String accessToken) throws IOException {
-        ConfigManager configManager = new ConfigManager();
-        OmumuConfig config = configManager.load();
-        OmumuConfig.Profile profile = new OmumuConfig.Profile(siteUrl, accessToken);
-        if ("default".equals(profileName)) {
-            config.setDefaultProfile(profile);
-        } else {
-            config.getSites().put(profileName, profile);
+    /**
+     * Authorizes the CLI against the freshly provisioned site to mint a site-scoped token and save it
+     * as the profile. The signup OAuth ran against the platform host with only the site:provision
+     * scope, so it cannot manage the new site — this is a fresh browser login against the new site,
+     * which dynamically registers a client and requests the full set of content scopes. Returns the
+     * login command's exit code (0 on success).
+     */
+    private int loginToNewSite(String siteUrl) {
+        System.out.println("Connecting the CLI to your new site (this opens the browser once more)...");
+        LoginCommand login = new LoginCommand();
+        login.url = siteUrl;
+        login.profileName = profileName;
+        try {
+            return login.call();
+        } catch (Exception e) {
+            System.err.println("Login failed: " + e.getMessage());
+            return 1;
         }
-        configManager.save(config);
-        System.out.println("Saved profile '" + profileName + "' to " + configManager.getConfigFile());
     }
 
     // ─── PKCE / helpers ─────────────────────────────────────────────────
