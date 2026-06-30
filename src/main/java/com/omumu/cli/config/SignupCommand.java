@@ -229,7 +229,7 @@ public class SignupCommand implements Callable<Integer> {
 
     private Checkout startCheckout(String accessToken, String subdomain) {
         try {
-            String body = "{\"subdomain\":\"" + subdomain + "\"}";
+            String body = new ObjectMapper().createObjectNode().put("subdomain", subdomain).toString();
             HttpResponse<String> response = HttpClient.newHttpClient().send(
                     HttpRequest.newBuilder()
                             .uri(URI.create(host + "/api/cli/site/checkout"))
@@ -256,7 +256,7 @@ public class SignupCommand implements Callable<Integer> {
 
     /** Polls the provision endpoint until it returns 200 or times out after ~10 minutes. */
     private String pollUntilProvisioned(String accessToken, String sessionId) {
-        String body = "{\"sessionId\":\"" + sessionId + "\"}";
+        String body = new ObjectMapper().createObjectNode().put("sessionId", sessionId).toString();
         long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10);
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
@@ -280,13 +280,19 @@ public class SignupCommand implements Callable<Integer> {
                         System.err.println("Provisioning failed: " + error);
                         return null;
                     }
+                } else if (response.statusCode() >= 500) {
+                    // Transient server error — keep polling until success or timeout.
+                    System.err.println("Provision call transient error " + response.statusCode() + ", retrying...");
                 } else {
                     System.err.println("Provision call failed: " + response.statusCode() + " " + response.body());
                     return null;
                 }
-            } catch (Exception e) {
-                System.err.println("Provision call error: " + e.getMessage());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
                 return null;
+            } catch (Exception e) {
+                // Transient network/parse error — keep polling until success or timeout.
+                System.err.println("Provision call error: " + e.getMessage() + ", retrying...");
             }
             try {
                 Thread.sleep(3000);
