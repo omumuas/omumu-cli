@@ -79,6 +79,12 @@ public class SignupCommand implements Callable<Integer> {
 
         Checkout checkout = startCheckout(accessToken, subdomain);
         if (checkout == null) return 1;
+        if (!isStripeCheckoutUrl(checkout.url)) {
+            // Same MITM guard as the site URL below: the checkout URL is a server response, and on a
+            // non-HTTPS --host a tampered response could point the browser at a payment-phishing page.
+            System.err.println("Checkout returned an unexpected URL. Refusing to open it; please contact support.");
+            return 1;
+        }
 
         System.out.println();
         System.out.println("Opening Stripe Checkout in your browser ($5 one-time — explained on the page).");
@@ -100,16 +106,20 @@ public class SignupCommand implements Callable<Integer> {
         }
 
         System.out.println();
-        System.out.println("Your site is live: " + siteUrl);
+        System.out.println("✅ Your site is live: " + siteUrl);
         System.out.println();
 
         // The signup token carries only site:provision against the platform host — it cannot manage
         // the new site. Log in against the new site itself to save a working, correctly-scoped profile.
         if (loginToNewSite(siteUrl) != 0) {
+            // The site is provisioned and paid for — the irreversible part succeeded. Connecting the
+            // CLI is recoverable setup, so exit 0 with a clear next step rather than a failure code
+            // that could read as "my payment was lost". The next command (omumu status) will say
+            // "not logged in" if they skip this, which self-corrects.
             System.out.println();
-            System.out.println("Couldn't connect the CLI to your new site automatically. Finish with:");
-            System.out.println("  omumu login --url " + siteUrl);
-            return 1;
+            System.out.println("⚠️  One step left — connect the CLI:");
+            System.out.println("      omumu login --url " + siteUrl);
+            return 0;
         }
 
         System.out.println("Try it: omumu status");
@@ -369,6 +379,28 @@ public class SignupCommand implements Callable<Integer> {
         }
         String host = uri.getHost().toLowerCase();
         return host.endsWith(PROVISIONED_SITE_SUFFIX) && host.length() > PROVISIONED_SITE_SUFFIX.length();
+    }
+
+    /**
+     * Whether {@code checkoutUrl} is a Stripe-hosted Checkout URL. The checkout URL comes from the
+     * server's response, so — like the site URL — it is validated before the CLI opens it in a
+     * browser, to stop a tampered/MITM'd response on a non-HTTPS {@code --host} from redirecting the
+     * user to a payment-phishing page. Stripe Checkout Sessions are always hosted under stripe.com.
+     */
+    private static boolean isStripeCheckoutUrl(String checkoutUrl) {
+        if (checkoutUrl == null) {
+            return false;
+        }
+        URI uri;
+        try {
+            uri = URI.create(checkoutUrl);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null) {
+            return false;
+        }
+        return uri.getHost().toLowerCase().endsWith(".stripe.com");
     }
 
     // ─── PKCE / helpers ─────────────────────────────────────────────────
