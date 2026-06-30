@@ -9,6 +9,13 @@ brew tap omumuas/omumu
 brew install omumu
 ```
 
+If Homebrew refuses with `Refusing to load formula ... from untrusted tap`, you have
+`HOMEBREW_REQUIRE_TAP_TRUST` enabled (Homebrew 6+). Trust this tap once, then install:
+
+```bash
+brew trust omumuas/omumu
+```
+
 ## Quick start
 
 ```bash
