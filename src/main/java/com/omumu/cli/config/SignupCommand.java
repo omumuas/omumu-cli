@@ -91,6 +91,13 @@ public class SignupCommand implements Callable<Integer> {
 
         String siteUrl = pollUntilProvisioned(accessToken, checkout.sessionId);
         if (siteUrl == null) return 1;
+        if (!isProvisionedSiteUrl(siteUrl)) {
+            // The URL came back from the provision response; refuse to open a browser or run OAuth
+            // against anything that isn't an HTTPS Omumu site, so a tampered/MITM'd response on a
+            // non-HTTPS --host can't redirect the fully-scoped login to an attacker host.
+            System.err.println("Provisioning returned an unexpected site URL. Refusing to continue; please contact support.");
+            return 1;
+        }
 
         System.out.println();
         System.out.println("Your site is live: " + siteUrl);
@@ -326,6 +333,7 @@ public class SignupCommand implements Callable<Integer> {
     private int loginToNewSite(String siteUrl) {
         System.out.println("Connecting the CLI to your new site (this opens the browser once more)...");
         LoginCommand login = new LoginCommand();
+        login.parent = parent;   // propagate global options so the delegate behaves like a top-level login
         login.url = siteUrl;
         login.profileName = profileName;
         try {
@@ -334,6 +342,33 @@ public class SignupCommand implements Callable<Integer> {
             System.err.println("Login failed: " + e.getMessage());
             return 1;
         }
+    }
+
+    /** The domain every CLI-provisioned site lives under (mirrors the server's SITE_DOMAIN constant). */
+    private static final String PROVISIONED_SITE_SUFFIX = ".myomumu.com";
+
+    /**
+     * Whether {@code siteUrl} is a site we provisioned: an HTTPS URL whose host is a subdomain of
+     * {@link #PROVISIONED_SITE_SUFFIX}. The signup flow opens this URL in the browser and runs a
+     * full, broadly-scoped OAuth against it, so validating it guards against a tampered or MITM'd
+     * provision response (possible on a non-HTTPS {@code --host}) redirecting the login — and the
+     * token it mints — to an attacker-controlled host.
+     */
+    private static boolean isProvisionedSiteUrl(String siteUrl) {
+        if (siteUrl == null) {
+            return false;
+        }
+        URI uri;
+        try {
+            uri = URI.create(siteUrl);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null) {
+            return false;
+        }
+        String host = uri.getHost().toLowerCase();
+        return host.endsWith(PROVISIONED_SITE_SUFFIX) && host.length() > PROVISIONED_SITE_SUFFIX.length();
     }
 
     // ─── PKCE / helpers ─────────────────────────────────────────────────
