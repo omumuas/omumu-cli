@@ -124,7 +124,7 @@ cd omumu-cli
 
 # JAR (requires Java 21+)
 mvn clean package
-java -jar target/omumu-cli-0.2.4.jar --help
+java -jar target/omumu-cli-0.3.0.jar --help
 
 # Native binary (requires GraalVM)
 mvn clean package -Pnative
