@@ -166,7 +166,9 @@ public class SignupCommand implements Callable<Integer> {
                 if (state != null) stateFuture.complete(state);
             } else {
                 html = "<html><body><h1>Authorization failed</h1></body></html>";
-                codeFuture.completeExceptionally(new RuntimeException("no code"));
+                RuntimeException failure = new RuntimeException("no code");
+                codeFuture.completeExceptionally(failure);
+                stateFuture.completeExceptionally(failure);
             }
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
