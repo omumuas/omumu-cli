@@ -79,6 +79,12 @@ public class SignupCommand implements Callable<Integer> {
 
         Checkout checkout = startCheckout(accessToken, subdomain);
         if (checkout == null) return 1;
+        if (!isStripeCheckoutUrl(checkout.url)) {
+            // Same MITM guard as the site URL below: the checkout URL is a server response, and on a
+            // non-HTTPS --host a tampered response could point the browser at a payment-phishing page.
+            System.err.println("Checkout returned an unexpected URL. Refusing to open it; please contact support.");
+            return 1;
+        }
 
         System.out.println();
         System.out.println("Opening Stripe Checkout in your browser ($5 one-time — explained on the page).");
@@ -91,11 +97,31 @@ public class SignupCommand implements Callable<Integer> {
 
         String siteUrl = pollUntilProvisioned(accessToken, checkout.sessionId);
         if (siteUrl == null) return 1;
-
-        saveProfile(siteUrl, accessToken);
+        if (!isProvisionedSiteUrl(siteUrl)) {
+            // The URL came back from the provision response; refuse to open a browser or run OAuth
+            // against anything that isn't an HTTPS Omumu site, so a tampered/MITM'd response on a
+            // non-HTTPS --host can't redirect the fully-scoped login to an attacker host.
+            System.err.println("Provisioning returned an unexpected site URL. Refusing to continue; please contact support.");
+            return 1;
+        }
 
         System.out.println();
-        System.out.println("Your site is live: " + siteUrl);
+        System.out.println("✅ Your site is live: " + siteUrl);
+        System.out.println();
+
+        // The signup token carries only site:provision against the platform host — it cannot manage
+        // the new site. Log in against the new site itself to save a working, correctly-scoped profile.
+        if (loginToNewSite(siteUrl) != 0) {
+            // The site is provisioned and paid for — the irreversible part succeeded. Connecting the
+            // CLI is recoverable setup, so exit 0 with a clear next step rather than a failure code
+            // that could read as "my payment was lost". The next command (omumu status) will say
+            // "not logged in" if they skip this, which self-corrects.
+            System.out.println();
+            System.out.println("⚠️  One step left — connect the CLI:");
+            System.out.println("      omumu login --url " + siteUrl);
+            return 0;
+        }
+
         System.out.println("Try it: omumu status");
         return 0;
     }
@@ -307,17 +333,78 @@ public class SignupCommand implements Callable<Integer> {
         return null;
     }
 
-    private void saveProfile(String siteUrl, String accessToken) throws IOException {
-        ConfigManager configManager = new ConfigManager();
-        OmumuConfig config = configManager.load();
-        OmumuConfig.Profile profile = new OmumuConfig.Profile(siteUrl, accessToken);
-        if ("default".equals(profileName)) {
-            config.setDefaultProfile(profile);
-        } else {
-            config.getSites().put(profileName, profile);
+    /**
+     * Authorizes the CLI against the freshly provisioned site to mint a site-scoped token and save it
+     * as the profile. The signup OAuth ran against the platform host with only the site:provision
+     * scope, so it cannot manage the new site — this is a fresh browser login against the new site,
+     * which dynamically registers a client and requests the full set of content scopes. Returns the
+     * login command's exit code (0 on success).
+     */
+    private int loginToNewSite(String siteUrl) {
+        System.out.println("Connecting the CLI to your new site (this opens the browser once more)...");
+        LoginCommand login = new LoginCommand();
+        login.parent = parent;   // propagate global options so the delegate behaves like a top-level login
+        login.url = siteUrl;
+        login.profileName = profileName;
+        try {
+            return login.call();
+        } catch (Exception e) {
+            System.err.println("Login failed: " + e.getMessage());
+            return 1;
         }
-        configManager.save(config);
-        System.out.println("Saved profile '" + profileName + "' to " + configManager.getConfigFile());
+    }
+
+    /** The domain every CLI-provisioned site lives under (mirrors the server's SITE_DOMAIN constant). */
+    private static final String PROVISIONED_SITE_SUFFIX = ".myomumu.com";
+
+    /**
+     * Whether {@code siteUrl} is a site we provisioned: an HTTPS URL whose host is a subdomain of
+     * {@link #PROVISIONED_SITE_SUFFIX}. The signup flow opens this URL in the browser and runs a
+     * full, broadly-scoped OAuth against it, so validating it guards against a tampered or MITM'd
+     * provision response (possible on a non-HTTPS {@code --host}) redirecting the login — and the
+     * token it mints — to an attacker-controlled host.
+     */
+    private static boolean isProvisionedSiteUrl(String siteUrl) {
+        if (siteUrl == null) {
+            return false;
+        }
+        URI uri;
+        try {
+            uri = URI.create(siteUrl);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null) {
+            // Reject a userinfo authority (user@host): java.net.URI and the OS browser handler can
+            // disagree on which host that resolves to, so refusing it removes the parser-differential.
+            return false;
+        }
+        String host = uri.getHost().toLowerCase();
+        return host.endsWith(PROVISIONED_SITE_SUFFIX) && host.length() > PROVISIONED_SITE_SUFFIX.length();
+    }
+
+    /**
+     * Whether {@code checkoutUrl} is a Stripe-hosted Checkout URL. The checkout URL comes from the
+     * server's response, so — like the site URL — it is validated before the CLI opens it in a
+     * browser, to stop a tampered/MITM'd response on a non-HTTPS {@code --host} from redirecting the
+     * user to a payment-phishing page. Stripe Checkout Sessions are always hosted under stripe.com.
+     */
+    private static boolean isStripeCheckoutUrl(String checkoutUrl) {
+        if (checkoutUrl == null) {
+            return false;
+        }
+        URI uri;
+        try {
+            uri = URI.create(checkoutUrl);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null) {
+            // Reject a userinfo authority (user@host): java.net.URI and the OS browser handler can
+            // disagree on which host that resolves to, so refusing it removes the parser-differential.
+            return false;
+        }
+        return uri.getHost().toLowerCase().endsWith(".stripe.com");
     }
 
     // ─── PKCE / helpers ─────────────────────────────────────────────────
