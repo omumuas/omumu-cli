@@ -374,7 +374,9 @@ public class SignupCommand implements Callable<Integer> {
         } catch (IllegalArgumentException e) {
             return false;
         }
-        if (!"https".equals(uri.getScheme()) || uri.getHost() == null) {
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null) {
+            // Reject a userinfo authority (user@host): java.net.URI and the OS browser handler can
+            // disagree on which host that resolves to, so refusing it removes the parser-differential.
             return false;
         }
         String host = uri.getHost().toLowerCase();
@@ -397,7 +399,9 @@ public class SignupCommand implements Callable<Integer> {
         } catch (IllegalArgumentException e) {
             return false;
         }
-        if (!"https".equals(uri.getScheme()) || uri.getHost() == null) {
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null) {
+            // Reject a userinfo authority (user@host): java.net.URI and the OS browser handler can
+            // disagree on which host that resolves to, so refusing it removes the parser-differential.
             return false;
         }
         return uri.getHost().toLowerCase().endsWith(".stripe.com");
