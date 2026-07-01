@@ -6,7 +6,7 @@
 
     <groupId>com.omumu</groupId>
     <artifactId>omumu-cli</artifactId>
-    <version>0.3.0</version><!-- cli-version -->
+    <version>0.4.0</version><!-- cli-version -->
     <packaging>jar</packaging>
 
     <name>Omumu CLI</name>
