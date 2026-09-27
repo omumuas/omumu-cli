@@ -48,7 +48,12 @@ public class CallCommand extends BaseCommand implements Callable<Integer> {
             String toolName = CallInvocation.toolName(tool);
             JsonNode schema = inputSchemaOf(client, toolName);
             Map<String, Object> args = ToolArguments.build(schema, readInput(inputJson), pairs);
-            out.printResult(extractData(client.callTool(toolName, args)));
+            JsonNode result = client.callTool(toolName, args);
+            if (ToolResults.isError(result)) {
+                out.printError(result.path("content").path(0).path("text").asText("Tool call failed"));
+                return 1;
+            }
+            out.printResult(extractData(result));
             return 0;
         } catch (Exception e) {
             out.printError(e.getMessage());
