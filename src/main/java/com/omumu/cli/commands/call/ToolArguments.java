@@ -26,23 +26,35 @@ public final class ToolArguments {
      * @param pairs       {@code key=value} pairs; they override keys from {@code inputJson}
      */
     public static Map<String, Object> build(JsonNode inputSchema, String inputJson, List<String> pairs) {
-        final Map<String, Object> args = new LinkedHashMap<>(parseInput(inputJson));
         final JsonNode properties = inputSchema == null ? null : inputSchema.path("properties");
+        final Map<String, Object> args = new LinkedHashMap<>(parseInput(inputJson));
+        for (String key : args.keySet()) {
+            requireKnown(key, properties);
+        }
 
         for (String pair : pairs) {
             final int eq = pair.indexOf('=');
             if (eq <= 0) {
-                throw new IllegalArgumentException("Expected key=value, got '" + pair + "'");
+                throw new IllegalArgumentException("Expected key=value, got '" + abbreviated(pair) + "'");
             }
             final String key = pair.substring(0, eq);
             final String value = pair.substring(eq + 1);
 
-            if (properties == null || !properties.has(key)) {
-                throw new IllegalArgumentException("Unknown argument '" + key + "'. Known: " + knownNames(properties));
-            }
-            args.put(key, typed(key, value, properties.get(key).path("type").asText("string")));
+            requireKnown(key, properties);
+            args.put(key, typed(key, value, SchemaTypes.typeOf(properties.get(key))));
         }
         return args;
+    }
+
+    private static void requireKnown(String key, JsonNode properties) {
+        if (properties == null || !properties.has(key)) {
+            throw new IllegalArgumentException("Unknown argument '" + key + "'. Known: " + knownNames(properties));
+        }
+    }
+
+    /** Error messages show at most the start of a value, so a secret passed by mistake isn't echoed whole. */
+    private static String abbreviated(String value) {
+        return value.length() <= 20 ? value : value.substring(0, 20) + "…";
     }
 
     private static Map<String, Object> parseInput(String inputJson) {
@@ -75,7 +87,7 @@ public final class ToolArguments {
             };
         } catch (RuntimeException e) {
             throw new IllegalArgumentException("Argument '" + key + "' must be " + article(type) + " " + type
-                    + ", got '" + value + "'");
+                    + ", got '" + abbreviated(value) + "'");
         }
     }
 

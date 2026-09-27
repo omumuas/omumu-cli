@@ -33,4 +33,18 @@ class CallInvocationTest {
     void aToolWithoutSchemaIsJustTheCall() {
         assertEquals("omumu call omumu_status", CallInvocation.forTool("omumu_status", null));
     }
+
+    @Test
+    void advertisesTheNonNullTypeOfAUnion() throws Exception {
+        var schema = MAPPER.readTree("""
+                {"type":"object","properties":{"limit":{"type":["integer","null"]}},"required":["limit"]}""");
+
+        assertEquals("omumu call omumu_x --arg limit=<integer>", CallInvocation.forTool("omumu_x", schema));
+    }
+
+    @Test
+    void toolNamesGetTheOmumuPrefix() {
+        assertEquals("omumu_offer_list", CallInvocation.toolName("offer_list"));
+        assertEquals("omumu_offer_list", CallInvocation.toolName("omumu_offer_list"));
+    }
 }

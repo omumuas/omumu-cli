@@ -96,8 +96,10 @@ omumu call omumu_page_update --input '{"slug":"home","contents":"# Hi"}'
 ```
 
 Each `--arg key=value` is typed by the tool's schema: numbers, booleans, and JSON arrays or
-objects are parsed, anything else is a string. `--input` takes all arguments as one JSON object,
-and `--arg` values override its keys. An unknown argument or tool is refused with the known names.
+objects are parsed, anything else is a string. `--input` takes all arguments as one JSON object
+(inline, `@file.json`, or `-` for stdin — use a file or stdin for secrets, so they stay out of
+`ps` and shell history), and `--arg` values override its keys. An unknown argument or tool is
+refused with the known names.
 
 A few common tasks also have their own commands:
 

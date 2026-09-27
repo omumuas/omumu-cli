@@ -23,7 +23,8 @@ class ToolArgumentsTest {
                   "vatRate":{"type":"number"},
                   "published":{"type":"boolean"},
                   "paymentProviders":{"type":"array"},
-                  "settings":{"type":"object"}
+                  "settings":{"type":"object"},
+                  "limit":{"type":["integer","null"]}
                 }}""");
     }
 
@@ -85,5 +86,26 @@ class ToolArgumentsTest {
     void refusesInputThatIsNotAJsonObject() {
         assertThrows(IllegalArgumentException.class,
                 () -> ToolArguments.build(schema(), "[1,2]", List.of()));
+    }
+
+    @Test
+    void refusesAnUnknownKeyInInputJsonToo() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ToolArguments.build(schema(), "{\"titel\":\"x\"}", List.of()));
+        assertTrue(e.getMessage().contains("titel"), e.getMessage());
+    }
+
+    @Test
+    void typesANullableUnionByItsNonNullType() throws Exception {
+        Map<String, Object> args = ToolArguments.build(schema(), null, List.of("limit=42"));
+        assertEquals(42L, ((Number) args.get("limit")).longValue());
+    }
+
+    @Test
+    void doesNotEchoALongValueInFull() {
+        String secret = "sk_live_" + "x".repeat(80);
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ToolArguments.build(schema(), null, List.of("totalAmountCents=" + secret)));
+        assertTrue(!e.getMessage().contains(secret), e.getMessage());
     }
 }

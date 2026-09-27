@@ -19,9 +19,14 @@ public final class CallInvocation {
         final JsonNode properties = inputSchema.path("properties");
         for (JsonNode required : inputSchema.path("required")) {
             final String name = required.asText();
-            final String type = properties.path(name).path("type").asText("string");
+            final String type = SchemaTypes.typeOf(properties.path(name));
             cli.append(" --arg ").append(name).append("=<").append(type).append('>');
         }
         return cli.toString();
+    }
+
+    /** The full tool name; the {@code omumu_} prefix may be left out on the command line. */
+    public static String toolName(String name) {
+        return name.startsWith("omumu_") ? name : "omumu_" + name;
     }
 }

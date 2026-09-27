@@ -33,7 +33,7 @@ public class CallCommand extends BaseCommand implements Callable<Integer> {
     List<String> pairs = new ArrayList<>();
 
     @Option(names = "--input", paramLabel = "JSON",
-            description = "All arguments as one JSON object; --arg values override its keys.")
+            description = "All arguments as one JSON object, @file to read it from a file, or - for stdin; --arg values override its keys.")
     String inputJson;
 
     @Override
@@ -41,15 +41,29 @@ public class CallCommand extends BaseCommand implements Callable<Integer> {
         OutputFormatter out = resolveFormatter(parent);
         try {
             OmumuClient client = resolveClient(parent);
-            String toolName = tool.startsWith("omumu_") ? tool : "omumu_" + tool;
+            String toolName = CallInvocation.toolName(tool);
             JsonNode schema = inputSchemaOf(client, toolName);
-            Map<String, Object> args = ToolArguments.build(schema, inputJson, pairs);
+            Map<String, Object> args = ToolArguments.build(schema, readInput(inputJson), pairs);
             out.printResult(extractData(client.callTool(toolName, args)));
             return 0;
         } catch (Exception e) {
             out.printError(e.getMessage());
             return 1;
         }
+    }
+
+    /** Reads {@code --input}: inline JSON, {@code @path} for a file, or {@code -} for stdin (keeps secrets off argv). */
+    private static String readInput(String input) throws java.io.IOException {
+        if (input == null) {
+            return null;
+        }
+        if (input.equals("-")) {
+            return new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (input.startsWith("@")) {
+            return java.nio.file.Files.readString(java.nio.file.Path.of(input.substring(1)));
+        }
+        return input;
     }
 
     private static JsonNode inputSchemaOf(OmumuClient client, String toolName) throws Exception {
