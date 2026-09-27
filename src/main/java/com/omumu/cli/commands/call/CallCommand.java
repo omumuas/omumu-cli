@@ -10,6 +10,10 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -53,15 +57,15 @@ public class CallCommand extends BaseCommand implements Callable<Integer> {
     }
 
     /** Reads {@code --input}: inline JSON, {@code @path} for a file, or {@code -} for stdin (keeps secrets off argv). */
-    private static String readInput(String input) throws java.io.IOException {
+    private static String readInput(String input) throws IOException {
         if (input == null) {
             return null;
         }
         if (input.equals("-")) {
-            return new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            return new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
         }
         if (input.startsWith("@")) {
-            return java.nio.file.Files.readString(java.nio.file.Path.of(input.substring(1)));
+            return Files.readString(Path.of(input.substring(1)));
         }
         return input;
     }

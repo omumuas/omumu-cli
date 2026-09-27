@@ -1,9 +1,12 @@
 package com.omumu.cli.commands.call;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,7 +18,8 @@ import java.util.Map;
  */
 public final class ToolArguments {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 
     private ToolArguments() {
     }
@@ -54,7 +58,7 @@ public final class ToolArguments {
 
     /** Error messages show at most the start of a value, so a secret passed by mistake isn't echoed whole. */
     private static String abbreviated(String value) {
-        return value.length() <= 20 ? value : value.substring(0, 20) + "…";
+        return value.length() <= 4 ? value : value.substring(0, 4) + "… (" + value.length() + " characters)";
     }
 
     private static Map<String, Object> parseInput(String inputJson) {
@@ -71,15 +75,23 @@ public final class ToolArguments {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalArgumentException("--input is not valid JSON: " + e.getMessage());
+            throw new IllegalArgumentException("--input is not valid JSON" + location(e));
         }
+    }
+
+    /** Where a JSON error is, never the offending text — --input may carry secrets. */
+    private static String location(Exception e) {
+        if (e instanceof JsonProcessingException jpe && jpe.getLocation() != null) {
+            return " (line " + jpe.getLocation().getLineNr() + ", column " + jpe.getLocation().getColumnNr() + ")";
+        }
+        return "";
     }
 
     private static Object typed(String key, String value, String type) {
         try {
             return switch (type) {
                 case "integer" -> Long.parseLong(value.trim());
-                case "number" -> Double.parseDouble(value.trim());
+                case "number" -> new BigDecimal(value.trim());
                 case "boolean" -> parseBoolean(value);
                 case "array" -> jsonOf(value, JsonNode::isArray, List.class);
                 case "object" -> jsonOf(value, JsonNode::isObject, Map.class);

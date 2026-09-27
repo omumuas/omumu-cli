@@ -40,7 +40,7 @@ class ToolArgumentsTest {
 
         assertEquals("123 ways", args.get("title"));
         assertEquals(4900L, ((Number) args.get("totalAmountCents")).longValue());
-        assertEquals(0.25, ((Number) args.get("vatRate")).doubleValue());
+        assertEquals(new java.math.BigDecimal("0.25"), args.get("vatRate"));
         assertEquals(Boolean.TRUE, args.get("published"));
         assertEquals(List.of("STRIPE", "INVOICE_REQUEST"), args.get("paymentProviders"));
         assertEquals(Map.of("a", 1), args.get("settings"));
@@ -106,6 +106,19 @@ class ToolArgumentsTest {
         String secret = "sk_live_" + "x".repeat(80);
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> ToolArguments.build(schema(), null, List.of("totalAmountCents=" + secret)));
-        assertTrue(!e.getMessage().contains(secret), e.getMessage());
+        assertTrue(!e.getMessage().contains("xxxxx"), e.getMessage());
+    }
+
+    @Test
+    void doesNotEchoBadInputJson() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ToolArguments.build(schema(), "{\"title\": sk_live_secretvalue}", List.of()));
+        assertTrue(!e.getMessage().contains("secretvalue"), e.getMessage());
+    }
+
+    @Test
+    void keepsDecimalNumbersExact() throws Exception {
+        Map<String, Object> args = ToolArguments.build(schema(), null, List.of("vatRate=0.1"));
+        assertEquals(new java.math.BigDecimal("0.1"), args.get("vatRate"));
     }
 }
