@@ -2,6 +2,7 @@ package com.omumu.cli;
 
 import com.omumu.cli.commands.SchemaCommand;
 import com.omumu.cli.commands.StatusCommand;
+import com.omumu.cli.commands.call.CallCommand;
 import com.omumu.cli.commands.course.CourseCommand;
 import com.omumu.cli.commands.skill.SkillCommand;
 import com.omumu.cli.config.LoginCommand;
@@ -20,6 +21,7 @@ import picocli.CommandLine.Mixin;
         LoginCommand.class,
         StatusCommand.class,
         SchemaCommand.class,
+        CallCommand.class,
         CourseCommand.class,
         SkillCommand.class
     }
