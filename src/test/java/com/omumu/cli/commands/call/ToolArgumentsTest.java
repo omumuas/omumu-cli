@@ -121,4 +121,11 @@ class ToolArgumentsTest {
         Map<String, Object> args = ToolArguments.build(schema(), null, List.of("vatRate=0.1"));
         assertEquals(new java.math.BigDecimal("0.1"), args.get("vatRate"));
     }
+
+    @Test
+    void doesNotEchoALongUnknownKeyInFull() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ToolArguments.build(schema(), null, List.of("sk_live_secretvalue_" + "y".repeat(40) + "=x")));
+        assertTrue(!e.getMessage().contains("secretvalue"), e.getMessage());
+    }
 }

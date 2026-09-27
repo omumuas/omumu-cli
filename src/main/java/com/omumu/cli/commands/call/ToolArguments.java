@@ -52,7 +52,7 @@ public final class ToolArguments {
 
     private static void requireKnown(String key, JsonNode properties) {
         if (properties == null || !properties.has(key)) {
-            throw new IllegalArgumentException("Unknown argument '" + key + "'. Known: " + knownNames(properties));
+            throw new IllegalArgumentException("Unknown argument '" + (key.length() <= 32 ? key : abbreviated(key)) + "'. Known: " + knownNames(properties));
         }
     }
 

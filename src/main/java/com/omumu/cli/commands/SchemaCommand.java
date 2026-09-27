@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.omumu.cli.OmumuCli;
 import com.omumu.cli.client.OmumuClient;
 import com.omumu.cli.commands.call.CallInvocation;
+import com.omumu.cli.commands.call.SchemaTypes;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.ParentCommand;
 
@@ -61,7 +62,7 @@ public class SchemaCommand extends BaseCommand implements Callable<Integer> {
                     properties.fieldNames().forEachRemaining(fieldName -> {
                         JsonNode prop = properties.get(fieldName);
                         ObjectNode param = params.putObject(fieldName);
-                        param.put("type", prop.path("type").asText("string"));
+                        param.put("type", SchemaTypes.typeOf(prop));
                         if (prop.has("description")) {
                             param.put("description", prop.get("description").asText());
                         }
