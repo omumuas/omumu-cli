@@ -84,26 +84,30 @@ Configuration is stored in `~/.omumu/config.json`.
 
 ## Commands
 
-Run `omumu schema` for the full list with parameters. Here's the overview:
+`omumu call` runs any Omumu tool your key can use. `omumu schema --json` lists them, with the
+`omumu call` line for each (required arguments included):
 
-| Group | Commands |
+```bash
+omumu schema --json                                   # every tool, its parameters and its call line
+omumu call omumu_offer_list                           # any tool, by name
+omumu call offer_create --arg title="My offer" --arg totalAmountCents=4900 \
+    --arg 'paymentProviders=["INVOICE_REQUEST"]'      # the omumu_ prefix is optional
+omumu call omumu_page_update --input '{"slug":"home","contents":"# Hi"}'
+```
+
+Each `--arg key=value` is typed by the tool's schema: numbers, booleans, and JSON arrays or
+objects are parsed, anything else is a string. `--input` takes all arguments as one JSON object
+(inline, `@file.json`, or `-` for stdin — use a file or stdin for secrets, so they stay out of
+`ps` and shell history), and `--arg` values override its keys. An unknown argument or tool is
+refused with the known names.
+
+A few common tasks also have their own commands:
+
+| Command | Does |
 |---|---|
-| `course` | list, get, create, update, delete, duplicate |
-| `module` | list, create, update |
-| `lesson` | create, update |
-| `lesson resource` | list, create, update, delete |
-| `email sequence` | list, get, create, update |
-| `email followup` | update |
-| `quiz` | list, get, create, update |
-| `question` | create, update |
-| `answer` | create, update |
-| `bucket` | create, update |
-| `option point` | list, create, update, delete, batch |
-| `optinform` | list, get, create, update, delete, add-field, remove-field, link-sequence |
-| `page` | list, get, create, update, delete |
-| `media` | generate image, set image |
-| `skill` | upload |
-| `debug` | throwables, outcome-log, sql, templates |
+| `omumu course list / get / create` | Courses |
+| `omumu skill upload` | Upload a `.skill` bundle (platform admins) |
+| `omumu status` | Check the connection |
 
 ### Uploading skills
 

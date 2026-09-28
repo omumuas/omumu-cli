@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.omumu.cli.OmumuCli;
 import com.omumu.cli.client.OmumuClient;
+import com.omumu.cli.commands.call.CallInvocation;
+import com.omumu.cli.commands.call.SchemaTypes;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.ParentCommand;
 
@@ -37,7 +39,7 @@ public class SchemaCommand extends BaseCommand implements Callable<Integer> {
             schema.put("name", "omumu");
             schema.put("version", "0.4.0");
             schema.put("description", "CLI for the Omumu customer education platform. Every command maps to an MCP tool call.");
-            schema.put("usage", "omumu <group> <action> [options]");
+            schema.put("usage", "omumu call <tool> [--arg key=value]... [--input <json>]");
             schema.put("global_options", "--json (machine output) | --verbose | --site-url <url> | --api-key <key>");
 
             ArrayNode commands = schema.putArray("commands");
@@ -49,9 +51,7 @@ public class SchemaCommand extends BaseCommand implements Callable<Integer> {
                 ObjectNode cmd = commands.addObject();
                 cmd.put("tool", name);
 
-                // Convert omumu_course_list -> "omumu course list"
-                String cliCommand = name.replace("omumu_", "omumu ").replace("_", " ");
-                cmd.put("cli", cliCommand);
+                cmd.put("cli", CallInvocation.forTool(name, tool.path("inputSchema")));
                 cmd.put("description", tool.path("description").asText(""));
 
                 // Include input schema if present
@@ -62,7 +62,7 @@ public class SchemaCommand extends BaseCommand implements Callable<Integer> {
                     properties.fieldNames().forEachRemaining(fieldName -> {
                         JsonNode prop = properties.get(fieldName);
                         ObjectNode param = params.putObject(fieldName);
-                        param.put("type", prop.path("type").asText("string"));
+                        param.put("type", SchemaTypes.typeOf(prop));
                         if (prop.has("description")) {
                             param.put("description", prop.get("description").asText());
                         }
