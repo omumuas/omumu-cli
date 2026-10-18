@@ -147,11 +147,12 @@ public class SignupCommand implements Callable<Integer> {
                 + "&code_challenge=" + enc(codeChallenge)
                 + "&code_challenge_method=S256";
 
-        System.out.println("Opening browser to authorize the CLI...");
-        if (!openBrowser(authorizeUrl)) {
-            System.out.println("If the browser didn't open, visit:");
-            System.out.println("  " + authorizeUrl);
+        if (openBrowser(authorizeUrl)) {
+            System.out.println("Opening browser to authorize the CLI. If it didn't open, visit:");
+        } else {
+            System.out.println("Open this URL in your browser:");
         }
+        System.out.println("  " + authorizeUrl);
 
         String code;
         try {

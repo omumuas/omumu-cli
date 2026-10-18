@@ -168,7 +168,7 @@ public class OmumuClient {
         if (initialized) return;
 
         ObjectNode params = mapper.createObjectNode();
-        params.put("protocolVersion", "2025-03-26");
+        params.put("protocolVersion", "2026-07-28");
         ObjectNode capabilities = params.putObject("capabilities");
         capabilities.putObject("tools");
         ObjectNode clientInfo = params.putObject("clientInfo");
