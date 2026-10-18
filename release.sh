@@ -98,6 +98,17 @@ class Omumu < Formula
     end
   end
 
+  def caveats
+    return if !OS.mac? || !Hardware::CPU.arm?
+
+    <<~EOS
+      Homebrew runs its Xcode checks for this formula even though nothing is
+      compiled. On Apple Silicon the cask avoids that entirely:
+        brew uninstall omumu
+        brew install --cask omumuas/omumu/omumu
+    EOS
+  end
+
   test do
     assert_match "omumu", shell_output("#{bin}/omumu --version")
   end
@@ -105,6 +116,50 @@ end
 FORMULA_EOF
     sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/g" Formula/omumu.rb
     sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/g" Formula/omumu.rb
+
+    # The cask is the primary Apple Silicon install path. A non-bottle formula
+    # makes Homebrew run its fatal Xcode version checks even though nothing is
+    # compiled; casks skip those checks.
+    mkdir -p Casks
+    cat > Casks/omumu.rb << 'CASK_EOF'
+cask "omumu" do
+  version "VERSION_PLACEHOLDER"
+  sha256 "SHA256_PLACEHOLDER"
+
+  url "https://github.com/omumuas/omumu-cli/releases/download/v#{version}/omumu-#{version}-darwin-arm64.tar.gz"
+  name "Omumu CLI"
+  desc "CLI for the Omumu customer education platform"
+  homepage "https://github.com/omumuas/omumu-cli"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  # The native binary is only built for Apple Silicon. Intel Macs and Linux
+  # use the formula, which runs the uber JAR on OpenJDK.
+  depends_on arch: :arm64
+
+  binary "omumu"
+
+  # Homebrew quarantines cask downloads and the binary is not notarized, so
+  # macOS would kill it on launch (exit 137) unless the attribute is cleared.
+  # `postflight` (not `postflight_steps`) keeps this working on Homebrew 6.
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args:         ["-d", "com.apple.quarantine", "#{staged_path}/omumu"],
+                   must_succeed: false
+  end
+
+  caveats <<~EOS
+    This cask installs the prebuilt Apple Silicon binary and never needs Xcode.
+    If you installed the formula earlier, remove it first:
+      brew uninstall omumu
+  EOS
+end
+CASK_EOF
+    sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/g" Casks/omumu.rb
+    sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/g" Casks/omumu.rb
     git add -A
     git commit -m "Bump to v${VERSION}"
     git push
@@ -116,4 +171,4 @@ fi
 
 echo ""
 echo "=== v${VERSION} released ==="
-echo "Users can now: brew upgrade omumu"
+echo "Users can now: brew upgrade omumu (formula) or brew upgrade --cask omumu (Apple Silicon cask)"

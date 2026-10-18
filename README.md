@@ -4,9 +4,28 @@ Command-line interface for the [Omumu](https://omumu.com) customer education pla
 
 ## Install
 
+Apple Silicon Mac (prebuilt binary, no Xcode or Java needed):
+
+```bash
+brew tap omumuas/omumu
+brew install --cask omumu
+```
+
+Intel Mac or Linux (runs the JAR on OpenJDK 21, installed by Homebrew):
+
 ```bash
 brew tap omumuas/omumu
 brew install omumu
+```
+
+If you installed the formula on an Apple Silicon Mac earlier and `brew upgrade omumu`
+fails with `Your Xcode ... is too outdated`, switch to the cask. Homebrew treats any
+formula without a bottle as a source build and insists on a current Xcode, even though
+nothing is compiled. The cask skips that check:
+
+```bash
+brew uninstall omumu
+brew install --cask omumu
 ```
 
 If Homebrew refuses with `Refusing to load formula ... from untrusted tap`, you have
