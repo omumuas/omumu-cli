@@ -144,11 +144,20 @@ cask "omumu" do
 
   # Homebrew quarantines cask downloads and the binary is not notarized, so
   # macOS would kill it on launch (exit 137) unless the attribute is cleared.
-  # `postflight` (not `postflight_steps`) keeps this working on Homebrew 6.
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args:         ["-d", "com.apple.quarantine", "#{staged_path}/omumu"],
-                   must_succeed: false
+  # Homebrew 7 deprecates the `postflight` block in favour of `postflight_steps`;
+  # Homebrew 6 only has the block, so support both.
+  if respond_to?(:postflight_steps)
+    postflight_steps do
+      run "/usr/bin/xattr",
+          args:         ["-d", "com.apple.quarantine", "{{staged_path}}/omumu"],
+          must_succeed: false
+    end
+  else
+    postflight do
+      system_command "/usr/bin/xattr",
+                     args:         ["-d", "com.apple.quarantine", "#{staged_path}/omumu"],
+                     must_succeed: false
+    end
   end
 
   caveats <<~EOS
