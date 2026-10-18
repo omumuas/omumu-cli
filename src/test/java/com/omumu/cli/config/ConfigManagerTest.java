@@ -33,7 +33,9 @@ class ConfigManagerTest {
 
         assertEquals(OWNER_RW, Files.getPosixFilePermissions(dir.resolve("config.json")));
         assertEquals(OWNER_RWX, Files.getPosixFilePermissions(dir));
-        assertEquals(1, Files.list(dir).count(), "no temp file left behind");
+        try (var entries = Files.list(dir)) {
+            assertEquals(1, entries.count(), "no temp file left behind");
+        }
     }
 
     @Test
