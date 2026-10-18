@@ -37,7 +37,7 @@ public class SchemaCommand extends BaseCommand implements Callable<Integer> {
             // Build a clean schema document
             ObjectNode schema = mapper.createObjectNode();
             schema.put("name", "omumu");
-            schema.put("version", "0.4.0");
+            schema.put("version", "0.5.0");
             schema.put("description", "CLI for the Omumu customer education platform. Every command maps to an MCP tool call.");
             schema.put("usage", "omumu call <tool> [--arg key=value]... [--input <json>]");
             schema.put("global_options", "--json (machine output) | --verbose | --site-url <url> | --api-key <key>");
