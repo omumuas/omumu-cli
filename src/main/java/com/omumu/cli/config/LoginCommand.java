@@ -131,12 +131,14 @@ public class LoginCommand implements Callable<Integer> {
                 + "&code_challenge_method=S256";
 
         System.out.println();
+        // The URL is always printed: over SSH or in a container the browser launcher can "succeed"
+        // without any browser, and the user would otherwise have nothing to open.
         if (openBrowser(authorizeUrl)) {
-            System.out.println("Opening browser to authorize...");
+            System.out.println("Opening browser to authorize. If it didn't open, visit:");
         } else {
             System.out.println("Open this URL in your browser:");
-            System.out.println(authorizeUrl);
         }
+        System.out.println("  " + authorizeUrl);
         System.out.println();
         System.out.println("Waiting for authorization...");
 
